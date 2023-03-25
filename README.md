@@ -1,5 +1,8 @@
 # FPGA_101
 
+## 00_basic
+Simplest starting point.
+
 ## 01_button_led
 Reflect the button status on a LED. Simply wire up the input and the output.
 
