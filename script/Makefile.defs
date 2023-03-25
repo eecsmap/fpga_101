@@ -1,0 +1,7 @@
+build:
+	vivado -nolog -nojournal -mode batch -source ../../script/build.tcl
+
+clean:
+	rm -rf .Xil
+	rm usage_statistics_webtalk*
+	rm *.bit
