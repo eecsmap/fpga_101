@@ -1,7 +1,11 @@
 build:
 	vivado -nolog -nojournal -mode batch -source ../../script/build.tcl
 
+test:
+	iverilog -g2012 -o testbench.tbi testbench.v z1top.v
+	vvp testbench.tbi -fst
+
 clean:
-	rm -rf .Xil
-	rm usage_statistics_webtalk*
-	rm *.bit
+	$(RM) -r .Xil
+	$(RM) webtalk* usage_statistics_webtalk*
+	$(RM) *.fst *.tbi *.bit *.dcp
