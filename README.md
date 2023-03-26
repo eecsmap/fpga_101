@@ -1,5 +1,11 @@
 # FPGA_101
 
+## installation on mac
+`brew install icarus-verilog gtkwave`
+
+## installation on ubuntu
+`sudo apt install iverilog gtkwave`
+
 ## 00_basic
 Simplest starting point.
 
