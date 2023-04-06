@@ -3,12 +3,12 @@
 module testbench();
 
     reg clk = 0;
-    always #2 clk = ~clk;
+    always #5 clk = ~clk;
     reg tx;
     reg data_ready;
     reg busy;
 
-    localparam TEST_BAUD_LENGTH_IN_CYCLES = 3;
+    localparam TEST_BAUD_LENGTH_IN_CYCLES = 4;
     z1top #(
         .BAUD_LENGTH_IN_CYCLES(TEST_BAUD_LENGTH_IN_CYCLES),
         .DATA(8'b01011101)
@@ -19,9 +19,9 @@ module testbench();
         .UART_TX(tx)
     );
 
-    always @(posedge clk) begin
-        $display("%t data_ready=%b, busy=%b, tx=%b", $time, data_ready, busy, tx);
-    end
+    // always @(posedge clk) begin
+    //     $display("%t data_ready=%b, busy=%b, tx=%b", $time, data_ready, busy, tx);
+    // end
 
     initial begin
         $dumpfile("testbench.fst");
@@ -32,10 +32,11 @@ module testbench();
                 // idle first
                 data_ready = 0;
                 @(posedge clk);
+                #1;
                 data_ready = 1;
-                repeat (10 * TEST_BAUD_LENGTH_IN_CYCLES + 1) @(posedge clk); // make two test data send
+                repeat (10 * TEST_BAUD_LENGTH_IN_CYCLES + 2) @(posedge clk); // make two test data send
                 data_ready = 0;
-                repeat (10 * TEST_BAUD_LENGTH_IN_CYCLES) @(posedge clk);
+                repeat (10 * TEST_BAUD_LENGTH_IN_CYCLES + 2) @(posedge clk);
             end
             while (data_ready == 1) begin
                 //assert(busy == 0) else $error ("should be idle");
