@@ -1,15 +1,15 @@
-module z1top(
+module z1top #(
+    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200,
+    parameter DATA = 8'b01000001 // 'A'
+)
+(
     input sysclk,
     input data_ready,
     //input [7:0] data,
     output reg busy, // sending existing data, not accepting new data
     output UART_TX
 );
-    localparam DATA = 8'b01000001; // A
     localparam MAX_BIT_SENT = 10;
-    localparam SYS_CLK_FREQ = 125000000;
-    localparam BAUD_RATE = 115200;
-    localparam BAUD_LENGTH_IN_CYCLES = SYS_CLK_FREQ / BAUD_RATE;
 
     reg [$clog2(BAUD_LENGTH_IN_CYCLES)-1:0] count = 0;
     reg [9:0] shifting_data;
