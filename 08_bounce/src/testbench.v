@@ -6,14 +6,14 @@ module testbench();
     always #5 clk = ~clk;
 
     reg reset;
-    reg [3:0] leds;
+    reg [3:0] led;
 
     z1top #(
-        .CYCLES_PER_BOUNCE(2)
+        .CYCLES_PER_BOUNCE(5)
     ) top (
         .sysclk(clk),
         .reset(reset),
-        .leds(leds)
+        .led(led)
     );
 
     initial begin
