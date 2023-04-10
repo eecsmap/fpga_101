@@ -77,7 +77,6 @@ module debauncer
     localparam STATE_IDLE = 2'b00;
     localparam STATE_DEBOUNCING = 2'b01;
     localparam STATE_PRESSED = 2'b10;
-    localparam STATE_RELEASED = 2'b11;
 
     reg [$clog2(DEBOUNCE_CYCLES):0] count = 0, next_count = 0;
     reg [1:0] state, next_state;
@@ -114,20 +113,7 @@ module debauncer
             STATE_DEBOUNCING:
                 begin
                     if (!button) begin
-                        next_state = STATE_RELEASED;
-                        next_count = 0;
-                    end
-                end
-            STATE_RELEASED:
-                begin
-                    if (!button) begin
-                        next_count = count + 1;
-                        if (next_count == DEBOUNCE_CYCLES) begin
-                            next_count = 0;
-                            next_state = STATE_IDLE;
-                        end
-                    end else begin
-                        next_state = STATE_DEBOUNCING;
+                        next_state = STATE_IDLE;
                         next_count = 0;
                     end
                 end
