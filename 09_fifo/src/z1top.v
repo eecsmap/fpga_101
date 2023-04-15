@@ -7,17 +7,16 @@ module fifo #(
 )(
     input clk,
     input rst,
-    input [DATA_WIDTH-1:0] din,
     input wr_en,
+    input [DATA_WIDTH-1:0] din,
     input rd_en,
-    output full,
+    output [DATA_WIDTH-1:0] dout,
     output empty,
-    output [DATA_WIDTH-1:0] dout
+    output full
 );
 
     localparam SIZE = 1 << ADDR_WIDTH;
     reg [DATA_WIDTH-1:0] mem [0:SIZE-1];
-
     reg [ADDR_WIDTH-1:0] wr_ptr;
     reg [ADDR_WIDTH-1:0] rd_ptr;
     reg [ADDR_WIDTH:0] cnt;
@@ -28,12 +27,15 @@ module fifo #(
             rd_ptr <= 0;
             cnt <= 0;
         end else begin
-            if (wr_en && !full) begin
+            if (rd_en && wr_en && !full && !empty) begin
+                mem[wr_ptr] <= din;
+                wr_ptr <= wr_ptr + 1;
+                rd_ptr <= rd_ptr + 1;
+            end else if (wr_en && !full) begin
                 mem[wr_ptr] <= din;
                 wr_ptr <= wr_ptr + 1;
                 cnt <= cnt + 1;
-            end
-            if (rd_en && !empty) begin
+            end else if (rd_en && !empty) begin
                 rd_ptr <= rd_ptr + 1;
                 cnt <= cnt - 1;
             end
