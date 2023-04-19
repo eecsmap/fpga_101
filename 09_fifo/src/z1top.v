@@ -20,22 +20,32 @@ module fifo #(
     reg [ADDR_WIDTH-1:0] wr_ptr;
     reg [ADDR_WIDTH-1:0] rd_ptr;
     reg [ADDR_WIDTH:0] cnt;
+    reg [DATA_WIDTH-1:0] reg_out;
 
     always @(posedge clk) begin
-        if (rst) begin
+         if (rst) begin
             wr_ptr <= 0;
             rd_ptr <= 0;
             cnt <= 0;
         end else begin
-            if (rd_en && wr_en && !full && !empty) begin
+            if (rd_en && wr_en && empty) begin
+                reg_out <= din;
+                
                 mem[wr_ptr] <= din;
                 wr_ptr <= wr_ptr + 1;
+                reg_out <= mem[rd_ptr];
                 rd_ptr <= rd_ptr + 1;
+            end else if (rd_en && wr_en && (full || !empty)) begin
+                reg_out <= mem[rd_ptr];
+                rd_ptr <= rd_ptr + 1;
+                mem[wr_ptr] <= din;
+                wr_ptr <= wr_ptr + 1;
             end else if (wr_en && !full) begin
                 mem[wr_ptr] <= din;
                 wr_ptr <= wr_ptr + 1;
                 cnt <= cnt + 1;
             end else if (rd_en && !empty) begin
+                reg_out <= mem[rd_ptr];
                 rd_ptr <= rd_ptr + 1;
                 cnt <= cnt - 1;
             end
@@ -44,5 +54,5 @@ module fifo #(
 
     assign full = (cnt == SIZE);
     assign empty = (cnt == 0);
-    assign dout = mem[rd_ptr];
+    assign dout = reg_out;//mem[rd_ptr];
 endmodule
