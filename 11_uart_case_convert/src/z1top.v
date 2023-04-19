@@ -1,83 +1,106 @@
-module controller(
-    input clk,
-    input rst,
-    output reg data_in_ready,
-    input data_in_valid,
-    input [7:0] data_in,
-    input data_out_ready,
-    output reg data_out_valid,
-    output reg [7:0] data_out
-);
-
-    reg [7:0] data;
-    reg data_read = 0;
-    always @(posedge clk) begin
-        if (rst) begin
-            data_in_ready <= 0;
-            data_out_valid <= 0;
-            data_read <= 0;
-        end else begin
-            if (!data_read && data_in_valid && data_out_ready) begin
-                data_out <= data_in;
-                data_out_valid <= 1;
-                data_in_ready <= 1;
-            end if (!data_read && data_in_valid && !data_out_ready) begin
-                data <= data_in;
-                data_read <= 1;
-                data_in_ready <= 0;
-            end if (data_read && data_out_ready) begin
-                data_out <= data;
-                data_read <= 0;
-                data_out_valid <= 1;
-            end
-        end
-    end
-endmodule
-
 module z1top (
     input sysclk,
     input rst,
     input UART_RX,
-    output UART_TX
+    output UART_TX,
+    output [3:0] led
 );
+
+    wire controller_data_in_valid;
+    wire [7:0] controller_data_in;
+    wire controller_data_in_ready;
+    
+    wire controller_data_out_valid;
+    wire [7:0] controller_data_out;
+    wire controller_data_out_ready;
+
 
     controller c (
         .clk(sysclk),
         .rst(rst),
-        .data_in(data_in),
-        .data_in_valid(data_in_valid),
-        .data_in_ready(data_in_ready),
-        .data_out(data_out),
-        .data_out_valid(data_out_valid),
-        .data_out_ready(data_out_ready)
+        .data_in(controller_data_in),
+        .data_in_valid(controller_data_in_valid),
+        .data_in_ready(controller_data_in_ready),
+        .data_out(controller_data_out),
+        .data_out_valid(controller_data_out_valid),
+        .data_out_ready(controller_data_out_ready),
+        .status(led[3])
     );
-
-    wire data_in_valid;
-    wire [7:0] data_in;
-    wire data_in_ready;
 
     uart_receiver ur (
         .clk(sysclk),
         .rst(rst),
-        .ready(data_in_ready),
-        .valid(data_in_valid),
-        .data(data_in),
-        .uart_rx(UART_RX)
+        .ready(controller_data_in_ready),
+        .valid(controller_data_in_valid),
+        .data(controller_data_in),
+        .uart_rx(UART_RX),
+        .status(led[2])
     );
-
-    wire data_out_ready;
-    wire [7:0] data_out;
-    wire data_out_ready;
 
     uart_transmitter ut (
         .clk(sysclk),
         // .rst(rst),
-        .ready(data_out_valid),
-        .valid(),
-        .data(data_out),
-        .uart_tx(UART_TX)
+        .ready(controller_data_out_ready),
+        .valid(controller_data_out_valid),
+        .data(controller_data_out),
+        .uart_tx(UART_TX),
+        .status(led[1])
     );
 
+endmodule
+
+module controller(
+    input clk,
+    input rst,
+    output data_in_ready,
+    input data_in_valid,
+    input [7:0] data_in,
+    input data_out_ready,
+    output reg data_out_valid,
+    output reg [7:0] data_out,
+    output status
+);
+    reg [7:0] data;
+    reg data_read = 0;
+    assign data_in_ready = !data_read;
+    assign status = data_read;
+
+    reg [7:0] next_data;
+    always @(*) begin
+        if (data >= 8'h41 && data <= 8'h5A) begin
+            next_data = data + 8'h20;
+        end else if (data >= 8'h61 && data <= 8'h7A) begin
+            next_data = data - 8'h20;
+        end else begin
+            next_data = data;
+        end
+    end
+
+    always @(posedge clk) begin
+        if (rst) begin
+            data_out_valid <= 0;
+            data_read <= 0;
+            data_out <= 0;
+        end else begin
+            // if (!data_read && data_in_valid && data_out_ready) begin
+            //     data_out <= data_in;
+            //     data_out_valid <= 1;
+            //     data_in_ready <= 1;
+            // end if (!data_read && data_in_valid && !data_out_ready) begin
+            if (!data_read && data_in_valid) begin
+                data <= data_in;
+                data_read <= 1;
+            end
+            if (data_read && data_out_ready) begin
+                data_out <= next_data;
+                data_read <= 0;
+                data_out_valid <= 1;
+            end
+            if (!data_read && data_out_ready) begin
+                data_out_valid <= 0;
+            end
+        end
+    end
 endmodule
 
 module uart_receiver #(
@@ -90,7 +113,8 @@ module uart_receiver #(
     input ready,
     output reg valid,
     output reg [DATA_WIDTH-1:0] data,
-    input uart_rx
+    input uart_rx,
+    output status
 );
 
     localparam SAMPLES_MAX_COUNT = DATA_WIDTH + STOP_BIT + 1; // 1 for start bit
@@ -99,7 +123,7 @@ module uart_receiver #(
     wire [SAMPLES_COUNT_WIDTH-1:0] next_samples_count = samples_count + 1 == SAMPLES_MAX_COUNT ? 0 : samples_count + 1;
 
     localparam CYCLE_MAX_COUNT = BAUD_LENGTH_IN_CYCLES;
-    localparam CYCLE_COUNT_WIDTH = $clog2(CYCLE_MAX_COUNT) || 1;
+    localparam CYCLE_COUNT_WIDTH = $clog2(CYCLE_MAX_COUNT);
     reg [CYCLE_COUNT_WIDTH-1:0] cycle_count = 0;
     wire [CYCLE_COUNT_WIDTH-1:0] next_cycle_count = cycle_count + 1 != CYCLE_MAX_COUNT ? cycle_count + 1 : 0;
     wire sample_now = cycle_count == (CYCLE_MAX_COUNT + 1) / 2 - 1; // at least (ceil) half of the cycles have passed
@@ -107,6 +131,7 @@ module uart_receiver #(
     reg [SAMPLES_MAX_COUNT-1:0] samples = 0;
 
     reg scanning = 0;
+    assign status = scanning;
     always @(posedge clk) begin
         if (rst) begin
             scanning <= 0;
@@ -134,12 +159,12 @@ module uart_receiver #(
             end else begin
                 if (uart_rx == 0) begin
                     scanning <= 1;
-                    cycle_count <= next_cycle_count; // the first cycle is already passed
+                    cycle_count <= 1;//next_cycle_count; // the first cycle is already passed
                     samples <= 0;
                     samples_count <= 0;
                     if (sample_now) begin
-                        samples <= { uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
-                        samples_count <= next_samples_count;
+                        samples <= 0;//{ uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
+                        samples_count <= 1;//next_samples_count;
                     end
                 end
             end
@@ -152,10 +177,11 @@ module uart_transmitter #(
     parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200
 )(
     input clk,
-    input ready,
+    input valid,
     input [7:0] data,
-    output busy, // sending existing data, not accepting new data
-    output uart_tx
+    output ready, // sending existing data, not accepting new data
+    output uart_tx,
+    output status
 );
     localparam MAX_BIT_SENT = 10;
 
@@ -168,9 +194,10 @@ module uart_transmitter #(
     reg state = STATE_IDLE, next_state;
     reg all_sent;
 
+    assign status = state == STATE_BUSY;
     always @(*) begin
         next_state = state;
-        if (state == STATE_IDLE && ready)
+        if (state == STATE_IDLE && valid)
             next_state = STATE_BUSY;
         else if (state == STATE_BUSY && all_sent)
             next_state = STATE_IDLE;
@@ -211,6 +238,6 @@ module uart_transmitter #(
     end
 
     assign uart_tx = state == STATE_BUSY ? shifting_data[0] : 1'b1;
-    assign busy = state == STATE_BUSY;
+    assign ready = state == STATE_IDLE;
 
 endmodule
