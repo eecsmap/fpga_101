@@ -147,7 +147,6 @@ module uart_receiver #(
 
     // storage for the samples
     reg [SAMPLES_MAX_COUNT-1:0] samples = 0;
-
     assign data = samples[SAMPLES_MAX_COUNT-STOP_BIT-1:1];
 
     // status
@@ -162,6 +161,7 @@ module uart_receiver #(
             cycle_count <= 0;
             valid <= 0;
             error <= 0;
+            //data <= 0;
         end else begin
             if (valid && ready) begin
                 valid <= 0;
@@ -171,21 +171,28 @@ module uart_receiver #(
                 if (sample_now) begin
                     samples <= { uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
                     samples_count <= next_samples_count;
-                    if (samples_count == SAMPLES_MAX_COUNT - 1) begin
-                        if (uart_rx != 1) begin
-                            error <= 1;
-                        end
+                    if (samples_count == DATA_WIDTH + 1) begin
                         scanning <= 0;
+                        cycle_count <= 0; // check here: this is important
+                        // note: following two lines are the same
+                        //data <= samples[SAMPLES_MAX_COUNT-1-:DATA_WIDTH];
+                        //data <= samples[SAMPLES_MAX_COUNT-STOP_BIT:2];
                         valid <= 1;
+                        //samples <= 0; // change point, this does not matter yet we should not reset
                     end
                 end
             end else begin
                 if (uart_rx == 0) begin
-                    valid <= 0;
+                    valid <= 0; // change point, this one does not matter, if we want to keep the data buffer longer then we do not invalid here
                     scanning <= 1;
                     cycle_count <= 1;//next_cycle_count; // the first cycle is already passed
                     samples <= 0;
                     samples_count <= 0;
+                    // check: we don't need this part because we are not sampling the first cycle
+                    // if (sample_now) begin
+                    //     samples <= 0;//{ uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
+                    //     samples_count <= 1;//next_samples_count;
+                    // end
                 end
             end
         end
