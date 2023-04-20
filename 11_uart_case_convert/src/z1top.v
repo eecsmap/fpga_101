@@ -119,7 +119,7 @@ module controller(
 endmodule
 
 module uart_receiver #(
-    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200, // at least 1 cycle
+    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200, // at least 3 cycle so that we don't need to sample the first cycle of the start bit
     parameter DATA_WIDTH = 8, // support 1 to 8 bits 
     parameter STOP_BIT = 1 // support 1 or 2 stop bits
 )(
@@ -127,34 +127,41 @@ module uart_receiver #(
     input rst,
     input ready,
     output reg valid,
-    output reg [DATA_WIDTH-1:0] data,
+    output [DATA_WIDTH-1:0] data,
     input uart_rx,
     output status
 );
 
+    // necessary state to keep track of the samples
     localparam SAMPLES_MAX_COUNT = DATA_WIDTH + STOP_BIT + 1; // 1 for start bit
     localparam SAMPLES_COUNT_WIDTH = $clog2(SAMPLES_MAX_COUNT);
     reg [SAMPLES_COUNT_WIDTH-1:0] samples_count = 0;
     wire [SAMPLES_COUNT_WIDTH-1:0] next_samples_count = samples_count + 1 == SAMPLES_MAX_COUNT ? 0 : samples_count + 1;
 
-    localparam CYCLE_MAX_COUNT = BAUD_LENGTH_IN_CYCLES;
+    // necessary state to keep track of the cycles
+    localparam CYCLE_MAX_COUNT = BAUD_LENGTH_IN_CYCLES; // >= 3
     localparam CYCLE_COUNT_WIDTH = $clog2(CYCLE_MAX_COUNT);
     reg [CYCLE_COUNT_WIDTH-1:0] cycle_count = 0;
     wire [CYCLE_COUNT_WIDTH-1:0] next_cycle_count = cycle_count + 1 != CYCLE_MAX_COUNT ? cycle_count + 1 : 0;
     wire sample_now = cycle_count == (CYCLE_MAX_COUNT + 1) / 2 - 1; // at least (ceil) half of the cycles have passed
 
+    // storage for the samples
     reg [SAMPLES_MAX_COUNT-1:0] samples = 0;
 
+    assign data = samples[SAMPLES_MAX_COUNT-STOP_BIT-1:1];
+
+    // status
     reg scanning = 0;
-    assign status = scanning;
+    reg error = 0;
+    assign status = error;
     always @(posedge clk) begin
         if (rst) begin
             scanning <= 0;
+            samples <= 0;
             samples_count <= 0;
             cycle_count <= 0;
-            samples <= 0;
             valid <= 0;
-            data <= 0;
+            error <= 0;
         end else begin
             if (valid && ready) begin
                 valid <= 0;
@@ -164,23 +171,21 @@ module uart_receiver #(
                 if (sample_now) begin
                     samples <= { uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
                     samples_count <= next_samples_count;
-                    if (samples_count == DATA_WIDTH + 1) begin
+                    if (samples_count == SAMPLES_MAX_COUNT - 1) begin
+                        if (uart_rx != 1) begin
+                            error <= 1;
+                        end
                         scanning <= 0;
-                        data <= samples[SAMPLES_MAX_COUNT-1-:DATA_WIDTH];
                         valid <= 1;
-                        samples <= 0;
                     end
                 end
             end else begin
                 if (uart_rx == 0) begin
+                    valid <= 0;
                     scanning <= 1;
                     cycle_count <= 1;//next_cycle_count; // the first cycle is already passed
                     samples <= 0;
                     samples_count <= 0;
-                    if (sample_now) begin
-                        samples <= 0;//{ uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
-                        samples_count <= 1;//next_samples_count;
-                    end
                 end
             end
         end
