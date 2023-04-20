@@ -6,33 +6,48 @@ module z1top (
     output [3:0] led
 );
 
-    wire controller_data_in_valid;
-    wire [7:0] controller_data_in;
-    wire controller_data_in_ready;
+    // wire controller_data_in_valid;
+    // wire [7:0] controller_data_in;
+    // wire controller_data_in_ready;
     
-    wire controller_data_out_valid;
-    wire [7:0] controller_data_out;
-    wire controller_data_out_ready;
+    // wire controller_data_out_valid;
+    // wire [7:0] controller_data_out;
+    // wire controller_data_out_ready;
 
 
-    controller c (
-        .clk(sysclk),
-        .rst(rst),
-        .data_in(controller_data_in),
-        .data_in_valid(controller_data_in_valid),
-        .data_in_ready(controller_data_in_ready),
-        .data_out(controller_data_out),
-        .data_out_valid(controller_data_out_valid),
-        .data_out_ready(controller_data_out_ready),
-        .status(led[3])
-    );
+    // controller c (
+    //     .clk(sysclk),
+    //     .rst(rst),
+    //     .data_in(controller_data_in),
+    //     .data_in_valid(controller_data_in_valid),
+    //     .data_in_ready(controller_data_in_ready),
+    //     .data_out(controller_data_out),
+    //     .data_out_valid(controller_data_out_valid),
+    //     .data_out_ready(controller_data_out_ready),
+    //     .status(led[3])
+    // );
 
+    wire data_valid;
+    wire [7:0] data;
+    wire data_ready;
+
+    reg [7:0] next_data;
+    always @(*) begin
+        if (data >= 8'h41 && data <= 8'h5A) begin
+            next_data = data + 8'h20;
+        end else if (data >= 8'h61 && data <= 8'h7A) begin
+            next_data = data - 8'h20;
+        end else begin
+            next_data = data;
+        end
+    end
+    
     uart_receiver ur (
         .clk(sysclk),
         .rst(rst),
-        .ready(controller_data_in_ready),
-        .valid(controller_data_in_valid),
-        .data(controller_data_in),
+        .ready(data_ready),
+        .valid(data_valid),
+        .data(data),
         .uart_rx(UART_RX),
         .status(led[2])
     );
@@ -40,9 +55,9 @@ module z1top (
     uart_transmitter ut (
         .clk(sysclk),
         // .rst(rst),
-        .ready(controller_data_out_ready),
-        .valid(controller_data_out_valid),
-        .data(controller_data_out),
+        .ready(data_ready),
+        .valid(data_valid),
+        .data(next_data),
         .uart_tx(UART_TX),
         .status(led[1])
     );
