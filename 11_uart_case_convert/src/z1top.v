@@ -53,12 +53,11 @@ module z1top (
 
     uart_transmitter ut (
         .clk(sysclk),
-        // .rst(rst),
+        .rst(rst),
         .ready(data_ready),
         .valid(data_valid),
         .data(next_data),
-        .uart_tx(UART_TX),
-        .status(led[1])
+        .uart_tx(UART_TX)
     );
 
 endmodule
@@ -119,18 +118,17 @@ endmodule
 
 module uart_receiver #(
     parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200, // at least 3 cycle so that we don't need to sample the first cycle of the start bit
-    parameter DATA_WIDTH = 8, // support 1 to 8 bits 
-    parameter STOP_BIT = 1 // support 1 or 2 stop bits
+    parameter DATA_WIDTH = 8, // usually 8, but could be any positive integer
+    parameter STOP_BITS = 1 // support positive integer, usually 1 or 2 stop bits, 1.5 stop bits is not supported
 )(
     input clk,
     input rst,
     input ready,
     output reg valid,
     output [DATA_WIDTH-1:0] data,
-    input uart_rx,
-    output status
+    input uart_rx
 );
-    localparam SAMPLES_MAX_COUNT = DATA_WIDTH + STOP_BIT + 1; // 1 for start bit
+    localparam SAMPLES_MAX_COUNT = DATA_WIDTH + STOP_BITS + 1; // 1 for start bit
     localparam SAMPLES_COUNT_WIDTH = $clog2(SAMPLES_MAX_COUNT);
     reg [SAMPLES_COUNT_WIDTH-1:0] samples_count = 0;
     wire [SAMPLES_COUNT_WIDTH-1:0] next_samples_count = samples_count + 1 == SAMPLES_MAX_COUNT ? 0 : samples_count + 1;
@@ -138,11 +136,11 @@ module uart_receiver #(
     localparam CYCLE_MAX_COUNT = BAUD_LENGTH_IN_CYCLES; // >= 3
     localparam CYCLE_COUNT_WIDTH = $clog2(CYCLE_MAX_COUNT);
     reg [CYCLE_COUNT_WIDTH-1:0] cycle_count = 0;
-    wire [CYCLE_COUNT_WIDTH-1:0] next_cycle_count = cycle_count + 1 != CYCLE_MAX_COUNT ? cycle_count + 1 : 0;
+    wire [CYCLE_COUNT_WIDTH-1:0] next_cycle_count = cycle_count + 1 == CYCLE_MAX_COUNT ? 0 : cycle_count + 1;
     wire sample_now = cycle_count == (CYCLE_MAX_COUNT + 1) / 2 - 1; // at least (ceil) half of the cycles have passed
 
     reg [SAMPLES_MAX_COUNT-1:0] samples = 0;
-    assign data = samples[SAMPLES_MAX_COUNT-STOP_BIT-1:1];
+    assign data = samples[SAMPLES_MAX_COUNT-STOP_BITS-1-:DATA_WIDTH];
 
     reg scanning = 0;
     always @(posedge clk) begin
@@ -161,10 +159,10 @@ module uart_receiver #(
                 if (sample_now) begin
                     samples <= { uart_rx, samples[SAMPLES_MAX_COUNT-1:1] };
                     samples_count <= next_samples_count;
-                    if (samples_count == DATA_WIDTH + 1) begin
+                    if (samples_count == SAMPLES_MAX_COUNT - 1) begin
                         scanning <= 0;
-                        cycle_count <= 0;
                         valid <= 1;
+                        cycle_count <= 0;
                     end
                 end
             end else begin
@@ -182,7 +180,75 @@ module uart_receiver #(
 endmodule
 
 module uart_transmitter #(
-    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200
+    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200, // at least 3 cycle so that we don't need to sample the first cycle of the start bit
+    parameter DATA_WIDTH = 8, // usually 8, but could be any positive integer
+    parameter STOP_BITS = 1 // support positive integer, usually 1 or 2 stop bits, 1.5 stop bits is not supported
+)(
+    input clk,
+    input rst,
+    input valid,
+    input [7:0] data,
+    output reg ready,
+    output reg uart_tx
+);
+    localparam SAMPLES_MAX_COUNT = DATA_WIDTH + STOP_BITS + 1; // 1 for start bit
+    localparam SAMPLES_COUNT_WIDTH = $clog2(SAMPLES_MAX_COUNT);
+    reg [SAMPLES_COUNT_WIDTH-1:0] samples_count = 0;
+    wire [SAMPLES_COUNT_WIDTH-1:0] next_samples_count = samples_count + 1 == SAMPLES_MAX_COUNT ? 0 : samples_count + 1;
+
+    localparam CYCLE_MAX_COUNT = BAUD_LENGTH_IN_CYCLES; // >= 3
+    localparam CYCLE_COUNT_WIDTH = $clog2(CYCLE_MAX_COUNT);
+    reg [CYCLE_COUNT_WIDTH-1:0] cycle_count = 0;
+    wire [CYCLE_COUNT_WIDTH-1:0] next_cycle_count = cycle_count + 1 == CYCLE_MAX_COUNT ? 0 : cycle_count + 1;
+
+    reg [SAMPLES_MAX_COUNT-1:0] samples = { SAMPLES_MAX_COUNT{1'b1} };
+
+    reg sending = 0;
+    always @(posedge clk) begin
+        if (rst) begin
+            sending <= 0;
+            samples <= { SAMPLES_MAX_COUNT{1'b1} };
+            samples_count <= 0;
+            cycle_count <= 0;
+            uart_tx <= 1;
+            ready <= 0;
+        end else begin
+            if (ready && valid) begin
+                ready <= 0;
+                samples <= { {STOP_BITS{1'b1}}, data, 1'b0 };
+                sending <= 1;
+                samples_count <= 0;
+                cycle_count <= 0;
+                uart_tx <= 0;
+            end
+            if (sending) begin
+                cycle_count <= next_cycle_count;
+                if (cycle_count == CYCLE_MAX_COUNT - 1) begin
+                    samples_count <= next_samples_count;
+                    uart_tx <= samples[next_samples_count];
+                    if (samples_count == SAMPLES_MAX_COUNT - 1) begin
+                        sending <= 0;
+                        ready <= 1;
+                        cycle_count <= 0;
+                        samples <= { SAMPLES_MAX_COUNT{1'b1} };
+                        samples_count <= 0;
+                        uart_tx <= 1;
+                    end
+                end
+            end else begin
+                if (!ready) begin
+                    ready <= 1;
+                end
+            end
+        end
+    end
+
+endmodule
+
+module uart_transmitter2 #(
+    parameter BAUD_LENGTH_IN_CYCLES = 125000000/115200, // at least 3 cycle so that we don't need to sample the first cycle of the start bit
+    parameter DATA_WIDTH = 8, // usually 8, but could be any positive integer
+    parameter STOP_BITS = 1 // support positive integer, usually 1 or 2 stop bits, 1.5 stop bits is not supported
 )(
     input clk,
     input valid,
