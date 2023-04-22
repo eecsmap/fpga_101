@@ -5,31 +5,32 @@ module z1top (
     output UART_TX,
     output [3:0] led
 );
+    wire [7:0] data_in;    
+    wire data_in_valid;
+    wire data_in_ready;
 
-    // wire controller_data_in_valid;
-    // wire [7:0] controller_data_in;
-    // wire controller_data_in_ready;
-    
-    // wire controller_data_out_valid;
-    // wire [7:0] controller_data_out;
-    // wire controller_data_out_ready;
+    wire [7:0] data_out;
+    wire data_out_valid;
+    wire data_out_ready;
 
+    // assign data_out = data_in;
+    // assign data_out_valid = data_in_valid;
+    // assign data_in_ready = data_out_ready;
 
-    // controller c (
-    //     .clk(sysclk),
-    //     .rst(rst),
-    //     .data_in(controller_data_in),
-    //     .data_in_valid(controller_data_in_valid),
-    //     .data_in_ready(controller_data_in_ready),
-    //     .data_out(controller_data_out),
-    //     .data_out_valid(controller_data_out_valid),
-    //     .data_out_ready(controller_data_out_ready),
-    //     .status(led[3])
-    // );
+    controller c (
+        .clk(sysclk),
+        .rst(rst),
+        .data_in(data_in),
+        .data_in_valid(data_in_valid),
+        .data_in_ready(data_in_ready),
+        .data_out(data_out),
+        .data_out_valid(data_out_valid),
+        .data_out_ready(data_out_ready),
+        .status(led[3])
+    );
 
-    wire data_valid;
     wire [7:0] data;
-    wire data_ready;
+    assign data = data_out;
 
     reg [7:0] next_data;
     always @(*) begin
@@ -41,21 +42,21 @@ module z1top (
             next_data = data;
         end
     end
-    
+
     uart_receiver ur (
         .clk(sysclk),
         .rst(rst),
-        .ready(data_ready),
-        .valid(data_valid),
-        .data(data),
+        .ready(data_in_ready),
+        .valid(data_in_valid),
+        .data(data_in),
         .uart_rx(UART_RX)
     );
 
-    uart_transmitter ut (
+    uart_transmitter2 ut (
         .clk(sysclk),
         .rst(rst),
-        .ready(data_ready),
-        .valid(data_valid),
+        .ready(data_out_ready),
+        .valid(data_out_valid),
         .data(next_data),
         .uart_tx(UART_TX)
     );
@@ -65,7 +66,7 @@ endmodule
 module controller(
     input clk,
     input rst,
-    output data_in_ready,
+    output reg data_in_ready,
     input data_in_valid,
     input [7:0] data_in,
     input data_out_ready,
@@ -75,43 +76,37 @@ module controller(
 );
     reg [7:0] data;
     reg data_read = 0;
-    assign data_in_ready = !data_read;
+    // assign data_in_ready = !data_read;
     assign status = data_read;
-
-    reg [7:0] next_data;
-    always @(*) begin
-        if (data >= 8'h41 && data <= 8'h5A) begin
-            next_data = data + 8'h20;
-        end else if (data >= 8'h61 && data <= 8'h7A) begin
-            next_data = data - 8'h20;
-        end else begin
-            next_data = data;
-        end
-    end
 
     always @(posedge clk) begin
         if (rst) begin
+            data_in_ready <= 0;
             data_out_valid <= 0;
-            data_read <= 0;
             data_out <= 0;
+            data_read <= 0; // problem, long hold rst can consume data
         end else begin
-            // if (!data_read && data_in_valid && data_out_ready) begin
-            //     data_out <= data_in;
-            //     data_out_valid <= 1;
-            //     data_in_ready <= 1;
-            // end if (!data_read && data_in_valid && !data_out_ready) begin
-            if (!data_read && data_in_valid) begin
+            if (!data_read && data_in_valid && data_out_ready) begin // directly pass through
+                data_out <= data_in;
+                data_out_valid <= 1;
+                data_in_ready <= 1;
+            end 
+            if (!data_read && data_in_valid && !data_out_ready) begin
+            // if (!data_read && data_in_valid) begin
                 data <= data_in;
                 data_read <= 1;
+                data_in_ready <= 0;
             end
-            if (data_read && data_out_ready) begin
-                data_out <= next_data;
-                data_read <= 0;
-                data_out_valid <= 1;
-            end
-            if (!data_read && data_out_ready) begin
+            if (!data_read && !data_in_valid && data_out_ready) begin
                 data_out_valid <= 0;
             end
+            if (data_read && data_out_ready) begin
+                data_out <= data;
+                data_read <= 0;
+                data_in_ready <= 1;
+                data_out_valid <= 1;
+            end
+
         end
     end
 endmodule
@@ -251,6 +246,7 @@ module uart_transmitter2 #(
     parameter STOP_BITS = 1 // support positive integer, usually 1 or 2 stop bits, 1.5 stop bits is not supported
 )(
     input clk,
+    input rst,
     input valid,
     input [7:0] data,
     output ready, // sending existing data, not accepting new data
