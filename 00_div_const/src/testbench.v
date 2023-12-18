@@ -11,6 +11,10 @@ module testbench();
         $display("-5/2 = %f", -5/2);
         $display("5/-2 = %f", 5/-2);
         $display("-5/-2 = %f", -5/-2);
+        $display("int'(5/2) = %f", int'(5/2));
+        $display("int'(-5/2) = %f", int'(-5/2));
+        $display("int'(5/-2) = %f", int'(5/-2));
+        $display("int'(-5/-2) = %f", int'(-5/-2));
         repeat (10) @(posedge clk);
         $finish;
     end
