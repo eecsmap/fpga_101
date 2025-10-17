@@ -1,3 +1,6 @@
 *.fst
 *.tbi
 *.hier
+*.bit
+.Xil
+a.out
