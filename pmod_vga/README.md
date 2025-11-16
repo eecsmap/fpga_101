@@ -153,3 +153,5 @@ V_TOTAL: 525 (480 + 10 + 2 + 33)
 
 - https://digilent.com/reference/pmod/pmodvga/start
 - https://digilent.com/reference/pmod/pmodvga/reference-manual
+- https://digilent.com/reference/_media/reference/pmod/pmodvga/pmodvga_sch.pdf
+- 
