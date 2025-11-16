@@ -1,9 +1,16 @@
+.PHONY: build test program load clean
+
 build:
 	vivado -nolog -nojournal -mode batch -source ../../script/build.tcl
 
 test:
 	iverilog -g2012 -o testbench.tbi testbench.v z1top.v
 	vvp testbench.tbi -fst
+
+program:
+	vivado -nolog -nojournal -mode batch -source ../../script/program.tcl
+
+load: program
 
 clean:
 	$(RM) -r .Xil
