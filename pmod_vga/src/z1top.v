@@ -40,8 +40,8 @@ module z1top(
     localparam V_DISPLAY = 480;
     localparam V_FRONT = 10;
     localparam V_SYNC = 2;
-    localparam V_BACK = 33;
-    localparam V_TOTAL = 525;   // 480+10+2+33
+    localparam V_BACK = 29;
+    localparam V_TOTAL = 521;   // 480+10+2+29
     
     // Horizontal and vertical counters
     always @(posedge CLK_125MHZ_FPGA) begin
