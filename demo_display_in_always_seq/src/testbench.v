@@ -8,7 +8,7 @@ module testbench();
     demo dut(clk);
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(2, testbench);
         $display("testbench started");
 

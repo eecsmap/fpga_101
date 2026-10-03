@@ -108,7 +108,7 @@ module testbench();
 
     integer i, j;
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         
         for (i = 1; i < 10; i = i + 1) begin

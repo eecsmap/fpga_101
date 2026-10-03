@@ -11,13 +11,12 @@ program:
 impl:
 	vivado -nolog -nojournal -mode batch -source impl.tcl
 
-# -fst is necessary to generate the waveform file, if not specified, .fst is generated but invalid
-# then you can use gtkwave to open the waveform file test.fst
+# then you can use gtkwave to open the waveform file test.vcd
 test:
-	iverilog -g2012 -DDEBUG=1 -o test.tbi test.v top_module.v
-	vvp test.tbi -fst
+	iverilog -g2012 -DDEBUG=1 -o test.vvp test.v top_module.v
+	vvp test.vvp
 
 clean:
 	$(RM) -r .Xil
 	$(RM) webtalk* usage_statistics_webtalk*
-	$(RM) *.fst *.tbi *.bit *.dcp
+	$(RM) *.vcd *.vvp *.bit *.dcp

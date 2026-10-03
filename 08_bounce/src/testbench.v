@@ -17,7 +17,7 @@ module testbench();
     );
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         reset = 1;
         @(posedge clk); #1; reset = 0;

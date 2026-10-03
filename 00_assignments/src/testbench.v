@@ -27,7 +27,7 @@ module testbench();
     end
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         @(posedge clk) #1 $display("[out 1] value : %b", value);
         @(posedge clk) #1 $display("[out 2] value : %b", value);

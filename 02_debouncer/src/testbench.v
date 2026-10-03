@@ -18,7 +18,7 @@ module testbench();
     );
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
 
         synchronized_signals = 1;

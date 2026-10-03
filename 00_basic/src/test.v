@@ -25,7 +25,7 @@ module test_module();
             $display("DEBUG is not defined");
         `endif
 
-        $dumpfile("test.fst");
+        $dumpfile("test.vcd");
 
         // 0, dump no variables
         // 1, dump all variables in the scope

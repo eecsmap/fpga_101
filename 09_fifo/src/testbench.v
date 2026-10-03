@@ -28,7 +28,7 @@ module testbench();
     );
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
 
         $display("test case 1: read and write when empty");

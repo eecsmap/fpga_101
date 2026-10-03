@@ -22,7 +22,7 @@ module testbench();
     );
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(2, testbench);
 
         // we can print module internal values like this

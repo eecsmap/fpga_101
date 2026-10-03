@@ -25,7 +25,7 @@ module testbench();
     
     // Test different patterns
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         
         BUTTONS = 4'b0000;

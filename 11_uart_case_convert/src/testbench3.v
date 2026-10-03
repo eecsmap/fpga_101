@@ -27,7 +27,7 @@ module testbench();
     // end
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         rst = 1;
         rx = 1;

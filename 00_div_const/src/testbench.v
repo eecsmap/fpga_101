@@ -5,7 +5,7 @@ module testbench();
     always #(5/2) clk = ~clk;
 
     initial begin
-        $dumpfile("testbench.fst");
+        $dumpfile("testbench.vcd");
         $dumpvars(0, testbench);
         $display("5/2 = %f", 5/2);
         $display("-5/2 = %f", -5/2);
